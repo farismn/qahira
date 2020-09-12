@@ -1,0 +1,13 @@
+{:paths ["src" "resources"]
+ :deps  {org.clojure/clojure        {:mvn/version "1.10.2-alpha1"}
+         farismn/orchd              {:git/url "https://github.com/farismn/orchid"
+                                     :sha     "3c8c319693ad574b1d45c7f16dfa91b0b536e938"}
+         com.stuartsierra/component {:mvn/version "1.0.0"}
+         aero                       {:mvn/version "1.1.6"}
+         http-kit/http-kit          {:mvn/version "2.5.0-SNAPSHOT"}
+         metosin/reitit-core        {:mvn/version "0.5.5"}
+         metosin/reitit-ring        {:mvn/version "0.5.5"}
+         metosin/reitit-middleware  {:mvn/version "0.5.5"}
+         metosin/reitit-malli       {:mvn/version "0.5.5"}
+         metosin/ring-http-response {:mvn/version "0.9.1"}
+         metosin/muuntaja           {:mvn/version "0.6.7"}}}
