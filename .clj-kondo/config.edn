@@ -1,0 +1,2 @@
+{:lint-as {taoensso.encore/when-let clojure.core/let
+           taoensso.encore/if-let   clojure.core/let} }
