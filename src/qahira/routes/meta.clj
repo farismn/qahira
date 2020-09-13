@@ -5,15 +5,15 @@
 
 (defn anon-routes
   [_]
-  [["/api/meta"
-    {:name ::anon
-     :get  {:responses {http.sta/ok {:body [:map
-                                            [:meta
-                                             [:map
-                                              [:condition
-                                               [:map
-                                                [:name string?]
-                                                [:healthy? boolean?]]]]]]}}
-            :handler   (constantly
-                         (http.res/ok {:meta {:condition {:name     "qahira"
-                                                          :healthy? true}}}))}}]])
+  ["/api/meta"
+   {:name ::anon
+    :get  {:responses {http.sta/ok {:body [:map
+                                           [:meta
+                                            [:map
+                                             [:condition
+                                              [:map
+                                               [:name string?]
+                                               [:healthy? boolean?]]]]]]}}
+           :handler   (constantly
+                        (http.res/ok {:meta {:condition {:name     "qahira"
+                                                         :healthy? true}}}))}}])
