@@ -1,2 +1,2 @@
 dev:
-  clj -A:nrepl
+  clj -A:nrepl:dev

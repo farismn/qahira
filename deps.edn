@@ -1,24 +1,26 @@
-{:paths ["src" "resources"]
- :deps  {org.clojure/clojure                 {:mvn/version "1.10.2-alpha1"}
-         farismn/orchd                       {:git/url "https://github.com/farismn/orchid"
-                                              :sha     "627d52d5ab4f1ec5674d2168493b108b06f58b52"}
-         com.stuartsierra/component          {:mvn/version "1.0.0"}
-         aero                                {:mvn/version "1.1.6"}
-         http-kit/http-kit                   {:mvn/version "2.5.0-SNAPSHOT"}
-         metosin/reitit-core                 {:mvn/version "0.5.5"}
-         metosin/reitit-ring                 {:mvn/version "0.5.5"}
-         metosin/reitit-middleware           {:mvn/version "0.5.5"}
-         metosin/reitit-malli                {:mvn/version "0.5.5"}
-         metosin/ring-http-response          {:mvn/version "0.9.1"}
-         metosin/muuntaja                    {:mvn/version "0.6.7"}
-         buddy/buddy-core                    {:mvn/version "1.6.0"}
-         buddy/buddy-hashers                 {:mvn/version "1.4.0"}
-         buddy/buddy-auth                    {:mvn/version "2.2.0"}
-         buddy/buddy-sign                    {:mvn/version "3.1.0"}
-         org.postgresql/postgresql           {:mvn/version "42.2.16.jre7"}
-         hikari-cp/hikari-cp                 {:mvn/version "2.13.0"}
-         org.clojure/java.jdbc               {:mvn/version "0.7.11"}
-         honeysql/honeysql                   {:mvn/version "1.0.444"}
-         nilenso/honeysql-postgres           {:mvn/version "0.2.6"}
-         clj-time/clj-time                   {:mvn/version "0.15.2"}
-         camel-snake-kebab/camel-snake-kebab {:mvn/version "0.4.1"}}}
+{:paths   ["src" "resources"]
+ :deps    {org.clojure/clojure                 {:mvn/version "1.10.2-alpha1"}
+           farismn/orchd                       {:git/url "https://github.com/farismn/orchid"
+                                                :sha     "627d52d5ab4f1ec5674d2168493b108b06f58b52"}
+           com.stuartsierra/component          {:mvn/version "1.0.0"}
+           aero                                {:mvn/version "1.1.6"}
+           http-kit/http-kit                   {:mvn/version "2.5.0-SNAPSHOT"}
+           metosin/reitit-core                 {:mvn/version "0.5.5"}
+           metosin/reitit-ring                 {:mvn/version "0.5.5"}
+           metosin/reitit-middleware           {:mvn/version "0.5.5"}
+           metosin/reitit-malli                {:mvn/version "0.5.5"}
+           metosin/ring-http-response          {:mvn/version "0.9.1"}
+           metosin/muuntaja                    {:mvn/version "0.6.7"}
+           buddy/buddy-core                    {:mvn/version "1.6.0"}
+           buddy/buddy-hashers                 {:mvn/version "1.4.0"}
+           buddy/buddy-auth                    {:mvn/version "2.2.0"}
+           buddy/buddy-sign                    {:mvn/version "3.1.0"}
+           org.postgresql/postgresql           {:mvn/version "42.2.16.jre7"}
+           hikari-cp/hikari-cp                 {:mvn/version "2.13.0"}
+           org.clojure/java.jdbc               {:mvn/version "0.7.11"}
+           honeysql/honeysql                   {:mvn/version "1.0.444"}
+           nilenso/honeysql-postgres           {:mvn/version "0.2.6"}
+           clj-time/clj-time                   {:mvn/version "0.15.2"}
+           camel-snake-kebab/camel-snake-kebab {:mvn/version "0.4.1"}}
+ :aliases {:dev {:extra-paths ["dev"]
+                 :extra-deps  {com.stuartsierra/component.repl {:mvn/version "0.2.0"}}}}}
