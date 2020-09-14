@@ -21,6 +21,9 @@
   (-delete-user! [user-db username])
   (-restore-user! [user-db username]))
 
+(def Username string?)
+(def Password string?)
+
 (defn register-user!
   [user-db new-user]
   (-create-user! user-db (-> new-user

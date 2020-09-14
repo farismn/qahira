@@ -1,10 +1,10 @@
 (ns qahira.routes.meta
   (:require
-   [ring.util.http-response :as http.res]
+   [qahira.handlers.meta :as qhr.handlers.meta]
    [ring.util.http-status :as http.sta]))
 
 (defn anon-routes
-  [_]
+  [ctx]
   ["/api/meta"
    {:name ::anon
     :get  {:responses {http.sta/ok {:body [:map
@@ -14,6 +14,4 @@
                                               [:map
                                                [:name string?]
                                                [:healthy? boolean?]]]]]]}}
-           :handler   (constantly
-                        (http.res/ok {:meta {:condition {:name     "qahira"
-                                                         :healthy? true}}}))}}])
+           :handler   (qhr.handlers.meta/request-condition-handler ctx)}}])

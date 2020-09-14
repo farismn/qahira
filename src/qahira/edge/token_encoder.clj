@@ -13,6 +13,9 @@
 (def Kind
   keyword?)
 
+(def Token
+  string?)
+
 (def Payload
   [:map [:kind Kind]])
 

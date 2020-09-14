@@ -9,12 +9,21 @@
    [orchid.components.migratus :as orc.c.migratus]
    [orchid.components.reitit-ring :as orc.c.reit-ring]
    [orchid.components.timbre :as orc.c.timbre]
+   ;; [qahira.middleware.auth :as qhr.mdw.auth]
+   [qahira.middleware.cors :as qhr.mdw.cors]
    [qahira.middleware.exception :as qhr.mdw.ex]
+   [qahira.middleware.log :as qhr.mdw.log]
    [qahira.routes.meta :as qhr.routes.meta]
+   [qahira.routes.token :as qhr.routes.token]
+   [qahira.routes.user :as qhr.routes.user]
    [reitit.coercion.malli :as reit.coerce.ml]
    [reitit.ring.coercion :as reit.ring.coerce]
    [reitit.ring.middleware.muuntaja :as reit.ring.mdw.mtj]
    [reitit.ring.middleware.parameters :as reit.ring.mdw.params]))
+
+(defn- as-fn
+  [v]
+  (if (fn? v) v (constantly v)))
 
 (defn- make-http-listener-system
   [config]
@@ -28,6 +37,8 @@
                                       [:parameters-middleware
                                        :format-middleware
                                        :exception-middleware
+                                       :log-request-middleware
+                                       :cors-middleware
                                        :coerce-exception-middleware
                                        :coerce-request-middleware
                                        :coerce-response-middleware])}})]
@@ -43,20 +54,32 @@
 
 (defn- make-ring-middleware-system
   [_config]
-  (letfn [(make-ring-middleware-const [middleware]
-            (orc.c.reit-ring/make-ring-middleware (constantly middleware)))]
+  (letfn [(make-ring-middleware
+            ([middleware config]
+             (-> (as-fn middleware)
+                 (orc.c.reit-ring/make-ring-middleware)
+                 (assoc :config config)))
+            ([middleware]
+             (make-ring-middleware middleware {})))]
     (c/system-map
-      :parameters-middleware       (make-ring-middleware-const reit.ring.mdw.params/parameters-middleware)
-      :format-middleware           (make-ring-middleware-const reit.ring.mdw.mtj/format-middleware)
-      :exception-middleware        (make-ring-middleware-const qhr.mdw.ex/exception-middleware)
-      :coerce-exception-middleware (make-ring-middleware-const reit.ring.coerce/coerce-exceptions-middleware)
-      :coerce-request-middleware   (make-ring-middleware-const reit.ring.coerce/coerce-request-middleware)
-      :coerce-response-middleware  (make-ring-middleware-const reit.ring.coerce/coerce-response-middleware))))
+      :parameters-middleware       (make-ring-middleware reit.ring.mdw.params/parameters-middleware)
+      :format-middleware           (make-ring-middleware reit.ring.mdw.mtj/format-middleware)
+      :exception-middleware        (make-ring-middleware qhr.mdw.ex/exception-middleware)
+      :log-request-middleware      (make-ring-middleware qhr.mdw.log/log-request-middleware)
+      :cors-middleware             (make-ring-middleware qhr.mdw.cors/cors-middleware)
+      :coerce-exception-middleware (make-ring-middleware reit.ring.coerce/coerce-exceptions-middleware)
+      :coerce-request-middleware   (make-ring-middleware reit.ring.coerce/coerce-request-middleware)
+      :coerce-response-middleware  (make-ring-middleware reit.ring.coerce/coerce-response-middleware))))
 
 (defn- make-ring-routes-system
   [_config]
   (c/system-map
-    :meta-anon-routes (orc.c.reit-ring/make-ring-routes qhr.routes.meta/anon-routes)))
+    :meta-anon-routes    (orc.c.reit-ring/make-ring-routes qhr.routes.meta/anon-routes)
+    :token-target-routes (orc.c.reit-ring/make-ring-routes qhr.routes.token/target-routes)
+    :user-anon-routes    (orc.c.reit-ring/make-ring-routes qhr.routes.user/anon-routes)
+    :user-target-routes  (orc.c.reit-ring/make-ring-routes qhr.routes.user/target-routes)
+    :user-restore-routes (orc.c.reit-ring/make-ring-routes qhr.routes.user/restore-routes)
+    :user-reset-routes   (orc.c.reit-ring/make-ring-routes qhr.routes.user/reset-routes)))
 
 (defn- make-database-system
   [config]
@@ -91,13 +114,26 @@
              (make-token-encoder-system config)
              (make-logger-system config))
       (c/system-using
-        {:ring-router         [:meta-anon-routes]
-         :ring-router-options [:parameters-middleware
-                               :format-middleware
-                               :exception-middleware
-                               :coerce-exception-middleware
-                               :coerce-request-middleware
-                               :coerce-response-middleware]})))
+        {:ring-router            [:meta-anon-routes
+                                  :token-target-routes
+                                  :user-anon-routes
+                                  :user-target-routes
+                                  :user-restore-routes
+                                  :user-reset-routes]
+         :ring-options           [:parameters-middleware
+                                  :format-middleware
+                                  :exception-middleware
+                                  :log-request-middleware
+                                  :cors-middleware
+                                  :coerce-exception-middleware
+                                  :coerce-request-middleware
+                                  :coerce-response-middleware]
+         :log-request-middleware [:logger]
+         :token-target-routes    [:auth-token-encoder]
+         :user-anon-routes       [:database :auth-token-encoder]
+         :user-target-routes     [:database :auth-token-encoder]
+         :user-restore-routes    [:database :auth-token-encoder]
+         :user-reset-routes      [:database :auth-token-encoder]})))
 
 (def ^:private systems-map
   {:app/prod make-app-base-system
