@@ -3,6 +3,7 @@
    [qahira.edge.db :as qhr.edge.db]
    [qahira.edge.token-encoder :as qhr.edge.token-enc]
    [qahira.handlers.user :as qhr.handlers.user]
+   [qahira.middleware.util :as qhr.mdw.u]
    [ring.util.http-status :as http.sta]))
 
 (def ^:private WrappedAuthToken
@@ -31,45 +32,56 @@
            :handler    qhr.handlers.user/register-handler}}])
 
 (defn target-routes
-  [_ctx]
-  ["/api/user/:username"
-   {:name       ::target
-    :parameters {:path [:map [:username qhr.edge.db/Username]]}
-    :post       {:responses      {http.sta/ok {:body [:map [:token WrappedAuthToken]]}}
-                 #_#_:middleware [jeum.mdw.auth/basic-authentication-middleware
-                                  jeum.mdw.auth/authenticated-middleware
-                                  jeum.mdw.auth/permission-path-username-middleware]
-                 :handler        qhr.handlers.user/login-handler}
-    :put        {:responses      {http.sta/ok {:body [:map [:token WrappedAuthToken]]}}
-                 :parameters     {:body [:map [:user PasswordUpdatee]]}
-                 #_#_:middleware [[jeum.mdw.auth/jeumpa-token-authentication-middleware :auth]
-                                  jeum.mdw.auth/authenticated-middleware
-                                  jeum.mdw.auth/permission-path-username-middleware]
-                 :handler        qhr.handlers.user/update-password-handler}
-    :delete     {#_#_:middleware [[jeum.mdw.auth/jeumpa-token-authentication-middleware :auth]
-                                  jeum.mdw.auth/authenticated-middleware
-                                  jeum.mdw.auth/permission-path-username-middleware]
-                 :handler        qhr.handlers.user/delete-handler}}])
+  [ctx]
+  (letfn [(run-middlewares [middlewares]
+            (qhr.mdw.u/run-middlewares ctx middlewares))]
+    ["/api/user/:username"
+     {:name       ::target
+      :parameters {:path [:map [:username qhr.edge.db/Username]]}
+      :post       {:responses  {http.sta/ok {:body [:map [:token WrappedAuthToken]]}}
+                   :middleware (run-middlewares
+                                 [:basic-authentication-middleware
+                                  :authenticated-middleware
+                                  :permission-path-username-middleware])
+                   :handler    qhr.handlers.user/login-handler}
+      :put        {:responses  {http.sta/ok {:body [:map [:token WrappedAuthToken]]}}
+                   :parameters {:body [:map [:user PasswordUpdatee]]}
+                   :middleware (run-middlewares
+                                 [[:qahira-token-authentication-middleware :auth]
+                                  :authenticated-middleware
+                                  :permission-path-username-middleware])
+                   :handler    qhr.handlers.user/update-password-handler}
+      :delete     {:middleware (run-middlewares
+                                 [[:qahira-token-authentication-middleware :auth]
+                                  :authenticated-middleware
+                                  :permission-path-username-middleware])
+                   :handler    qhr.handlers.user/delete-handler}}]))
 
 (defn restore-routes
-  [_ctx]
-  ["/api/user/:username/restore"
-   {:name       ::restore
-    :parameters {:path [:map [:username qhr.edge.db/Username]]}
-    :post       {:responses      {http.sta/ok {:body [:map [:token WrappedAuthToken]]}}
-                 #_#_:middleware [[jeum.mdw.auth/jeumpa-token-authentication-middleware :restore]
-                                  jeum.mdw.auth/authenticated-middleware
-                                  jeum.mdw.auth/permission-path-username-middleware]
-                 :handler        qhr.handlers.user/restore-handler}}])
+  [ctx]
+  (letfn [(run-middlewares [middlewares]
+            (qhr.mdw.u/run-middlewares ctx middlewares))]
+    ["/api/user/:username/restore"
+     {:name       ::restore
+      :parameters {:path [:map [:username qhr.edge.db/Username]]}
+      :post       {:responses  {http.sta/ok {:body [:map [:token WrappedAuthToken]]}}
+                   :middleware (run-middlewares
+                                 [[:qahira-token-authentication-middleware :restore]
+                                  :authenticated-middleware
+                                  :permission-path-username-middleware])
+                   :handler    qhr.handlers.user/restore-handler}}]))
 
 (defn reset-routes
-  [_ctx]
-  ["/api/user/:username/reset"
-   {:name       ::reset
-    :parameters {:path [:map [:username qhr.edge.db/Username]]}
-    :put        {:responses      {http.sta/ok {:body [:map [:token WrappedAuthToken]]}}
-                 :parameters     {:body [:map [:user PasswordResetee]]}
-                 #_#_:middleware [[jeum.mdw.auth/jeumpa-token-authentication-middleware :reset]
-                                  jeum.mdw.auth/authenticated-middleware
-                                  jeum.mdw.auth/permission-path-username-middleware]
-                 :handler        qhr.handlers.user/reset-password-handler}}])
+  [ctx]
+  (letfn [(run-middlewares [middlewares]
+            (qhr.mdw.u/run-middlewares ctx middlewares))]
+    ["/api/user/:username/reset"
+     {:name       ::reset
+      :parameters {:path [:map [:username qhr.edge.db/Username]]}
+      :put        {:responses  {http.sta/ok {:body [:map [:token WrappedAuthToken]]}}
+                   :parameters {:body [:map [:user PasswordResetee]]}
+                   :middleware (run-middlewares
+                                 [[:qahira-token-authentication-middleware :reset]
+                                  :authenticated-middleware
+                                  :permission-path-username-middleware])
+                   :handler    qhr.handlers.user/reset-password-handler}}]))

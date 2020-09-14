@@ -9,10 +9,11 @@
    [orchid.components.migratus :as orc.c.migratus]
    [orchid.components.reitit-ring :as orc.c.reit-ring]
    [orchid.components.timbre :as orc.c.timbre]
-   ;; [qahira.middleware.auth :as qhr.mdw.auth]
+   [qahira.middleware.auth :as qhr.mdw.auth]
    [qahira.middleware.cors :as qhr.mdw.cors]
    [qahira.middleware.exception :as qhr.mdw.ex]
    [qahira.middleware.log :as qhr.mdw.log]
+   [qahira.middleware.util :as qhr.mdw.u]
    [qahira.routes.meta :as qhr.routes.meta]
    [qahira.routes.token :as qhr.routes.token]
    [qahira.routes.user :as qhr.routes.user]
@@ -30,18 +31,16 @@
   (letfn [(router-options [component]
             {:data {:muuntaja   mtj/instance
                     :coercion   reit.coerce.ml/coercion
-                    :middleware (into []
-                                      (comp
-                                        (map #(get component %))
-                                        (keep :middleware))
-                                      [:parameters-middleware
-                                       :format-middleware
-                                       :exception-middleware
-                                       :log-request-middleware
-                                       :cors-middleware
-                                       :coerce-exception-middleware
-                                       :coerce-request-middleware
-                                       :coerce-response-middleware])}})]
+                    :middleware (qhr.mdw.u/run-middlewares
+                                  component
+                                  [:parameters-middleware
+                                   :format-middleware
+                                   :exception-middleware
+                                   :log-request-middleware
+                                   :cors-middleware
+                                   :coerce-exceptions-middleware
+                                   :coerce-request-middleware
+                                   :coerce-response-middleware])}})]
     (-> (c/system-map
           :http-server  (orc.c.httpk/make-http-server (:qahira/http-server config))
           :ring-handler (orc.c.reit-ring/make-ring-handler)
@@ -62,14 +61,18 @@
             ([middleware]
              (make-ring-middleware middleware {})))]
     (c/system-map
-      :parameters-middleware       (make-ring-middleware reit.ring.mdw.params/parameters-middleware)
-      :format-middleware           (make-ring-middleware reit.ring.mdw.mtj/format-middleware)
-      :exception-middleware        (make-ring-middleware qhr.mdw.ex/exception-middleware)
-      :log-request-middleware      (make-ring-middleware qhr.mdw.log/log-request-middleware)
-      :cors-middleware             (make-ring-middleware qhr.mdw.cors/cors-middleware)
-      :coerce-exception-middleware (make-ring-middleware reit.ring.coerce/coerce-exceptions-middleware)
-      :coerce-request-middleware   (make-ring-middleware reit.ring.coerce/coerce-request-middleware)
-      :coerce-response-middleware  (make-ring-middleware reit.ring.coerce/coerce-response-middleware))))
+      :parameters-middleware                  (make-ring-middleware reit.ring.mdw.params/parameters-middleware)
+      :format-middleware                      (make-ring-middleware reit.ring.mdw.mtj/format-middleware)
+      :exception-middleware                   (make-ring-middleware qhr.mdw.ex/exception-middleware)
+      :log-request-middleware                 (make-ring-middleware qhr.mdw.log/log-request-middleware)
+      :cors-middleware                        (make-ring-middleware qhr.mdw.cors/cors-middleware)
+      :coerce-exceptions-middleware           (make-ring-middleware reit.ring.coerce/coerce-exceptions-middleware)
+      :coerce-request-middleware              (make-ring-middleware reit.ring.coerce/coerce-request-middleware)
+      :coerce-response-middleware             (make-ring-middleware reit.ring.coerce/coerce-response-middleware)
+      :authenticated-middleware               (make-ring-middleware qhr.mdw.auth/authenticated-middleware)
+      :permission-path-username-middleware    (make-ring-middleware qhr.mdw.auth/permission-path-username-middleware)
+      :basic-authentication-middleware        (make-ring-middleware qhr.mdw.auth/basic-authentication-middleware)
+      :qahira-token-authentication-middleware (make-ring-middleware qhr.mdw.auth/qahira-token-authentication-middleware))))
 
 (defn- make-ring-routes-system
   [_config]
@@ -125,15 +128,31 @@
                                   :exception-middleware
                                   :log-request-middleware
                                   :cors-middleware
-                                  :coerce-exception-middleware
+                                  :coerce-exceptions-middleware
                                   :coerce-request-middleware
                                   :coerce-response-middleware]
          :log-request-middleware [:logger]
-         :token-target-routes    [:auth-token-encoder]
+         :token-target-routes    [:auth-token-encoder
+                                  :qahira-token-authentication-middleware
+                                  :authenticated-middleware
+                                  :permission-path-username-middleware]
          :user-anon-routes       [:database :auth-token-encoder]
-         :user-target-routes     [:database :auth-token-encoder]
-         :user-restore-routes    [:database :auth-token-encoder]
-         :user-reset-routes      [:database :auth-token-encoder]})))
+         :user-target-routes     [:database
+                                  :auth-token-encoder
+                                  :basic-authentication-middleware
+                                  :qahira-token-authentication-middleware
+                                  :authenticated-middleware
+                                  :permission-path-username-middleware]
+         :user-restore-routes    [:database
+                                  :auth-token-encoder
+                                  :qahira-token-authentication-middleware
+                                  :authenticated-middleware
+                                  :permission-path-username-middleware]
+         :user-reset-routes      [:database
+                                  :auth-token-encoder
+                                  :qahira-token-authentication-middleware
+                                  :authenticated-middleware
+                                  :permission-path-username-middleware]})))
 
 (def ^:private systems-map
   {:app/prod make-app-base-system
