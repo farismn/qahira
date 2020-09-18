@@ -4,6 +4,7 @@
    [com.stuartsierra.component :as c]
    [muuntaja.core :as mtj]
    [orchid.components.hikari-cp :as orc.c.hikari]
+   [orchid.components.http-client :as orc.c.httpc]
    [orchid.components.http-kit :as orc.c.httpk]
    [orchid.components.jwt-encoder :as orc.c.jwt-enc]
    [orchid.components.migratus :as orc.c.migratus]
@@ -108,6 +109,11 @@
       (c/system-using
         {:logger [:logger-println]})))
 
+(defn- make-qahira-client-system
+  [config]
+  (c/system-map
+    :qahira-client (orc.c.httpc/make-http-client (:qahira/qahira-client config))))
+
 (defn- make-app-base-system
   [config]
   (-> (merge (make-http-listener-system config)
@@ -154,9 +160,18 @@
                                   :authenticated-middleware
                                   :permission-path-username-middleware]})))
 
+(defn- make-app-dev-system
+  [config]
+  (-> (merge (make-app-base-system config)
+             (make-qahira-client-system config))
+      (c/system-using
+        {:qahira-client [:ring-router]})))
+
 (def ^:private systems-map
   {:app/prod make-app-base-system
-   :app/dev  make-app-base-system})
+   :app/dev  make-app-dev-system
+   :app/test make-app-dev-system
+   :db/dev   make-database-system})
 
 (defn make-system
   [source system-kind]
