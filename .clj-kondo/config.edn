@@ -1,2 +1,5 @@
-{:lint-as {taoensso.encore/when-let clojure.core/let
-           taoensso.encore/if-let   clojure.core/let} }
+{:lint-as {taoensso.encore/when-let            clojure.core/let
+           taoensso.encore/if-let              clojure.core/let
+           expectations.clojure.test/defexpect clojure.test/deftest
+           expectations.clojure.test/expecting clojure.test/testing
+           expectations.clojure.test/from-each clojure.core/let}}

@@ -171,7 +171,7 @@
   {:app/prod make-app-base-system
    :app/dev  make-app-dev-system
    :app/test make-app-dev-system
-   :db/dev   make-database-system})
+   :db/test  make-database-system})
 
 (defn make-system
   [source system-kind]

@@ -24,13 +24,18 @@
 (def Username string?)
 (def Password string?)
 
+(def NewUser
+  [:map
+   [:username Username]
+   [:password Password]])
+
 (defn register-user!
   [user-db new-user]
   (-create-user! user-db (-> new-user
-                             (update :passwoord buddy.hash/derive)
+                             (update :password buddy.hash/derive)
                              (assoc :id (java.util.UUID/randomUUID)
                                     :date-created (time/now)
-                                    :exists? true))))
+                                    :exist? true))))
 (defn login-user
   [user-db username password]
   (e/when-let [user          (-find-user user-db username)
