@@ -55,7 +55,8 @@
           (from-each [kind     [:reset :restore]
                       username [(:username user)
                                 (t.gen/generate qhr.t.gen/username-generator)]]
-            (let [params {:qahira-api-token-auth (assoc user :username username)}]
+            (let [auth   (assoc user :username username)
+                  params {:qahira-api-token-auth auth}]
               (qhr.edge.qhrc/request-token qahira-client kind username params))))))))
 
 (defexpect register-user-test
