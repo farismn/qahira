@@ -12,7 +12,7 @@
    [honeysql.helpers :as sql.help]
    [honeysql-postgres.helpers :as psql.help]
    [orchid.components.hikari-cp]
-   [taoensso.encore :as e]))
+   [taoensso.encore :as e :refer [catching]]))
 
 (defprotocol UserDb
   (-create-user! [user-db new-user])
@@ -29,6 +29,15 @@
    [:username Username]
    [:password Password]])
 
+(def PasswordUpdatee
+  [:map
+   [:new-password Password]
+   [:old-password string?]])
+
+(def PasswordResetee
+  [:map
+   [:new-password Password]])
+
 (defn register-user!
   [user-db new-user]
   (-create-user! user-db (-> new-user
@@ -40,7 +49,7 @@
   [user-db username password]
   (e/when-let [user          (-find-user user-db username)
                user-password (:password user)
-               _             (e/catching
+               _             (catching
                                (buddy.hash/check password user-password))]
     user))
 

@@ -24,12 +24,12 @@
    [:new-password qhr.edge.db/Password]])
 
 (defn anon-routes
-  [_ctx]
+  [ctx]
   ["/api/user"
    {:name ::anon
     :post {:responses  {http.sta/ok {:body [:map [:token WrappedAuthToken]]}}
            :parameters {:body [:map [:user Registree]]}
-           :handler    qhr.handlers.user/register-handler}}])
+           :handler    (qhr.handlers.user/register-handler ctx)}}])
 
 (defn target-routes
   [ctx]
@@ -43,19 +43,19 @@
                                  [:basic-authentication-middleware
                                   :authenticated-middleware
                                   :permission-path-username-middleware])
-                   :handler    qhr.handlers.user/login-handler}
+                   :handler    (qhr.handlers.user/login-handler ctx)}
       :put        {:responses  {http.sta/ok {:body [:map [:token WrappedAuthToken]]}}
                    :parameters {:body [:map [:user PasswordUpdatee]]}
                    :middleware (run-middlewares
                                  [[:qahira-token-authentication-middleware :auth]
                                   :authenticated-middleware
                                   :permission-path-username-middleware])
-                   :handler    qhr.handlers.user/update-password-handler}
+                   :handler    (qhr.handlers.user/update-password-handler ctx)}
       :delete     {:middleware (run-middlewares
                                  [[:qahira-token-authentication-middleware :auth]
                                   :authenticated-middleware
                                   :permission-path-username-middleware])
-                   :handler    qhr.handlers.user/delete-handler}}]))
+                   :handler    (qhr.handlers.user/delete-handler ctx)}}]))
 
 (defn restore-routes
   [ctx]
@@ -69,7 +69,7 @@
                                  [[:qahira-token-authentication-middleware :restore]
                                   :authenticated-middleware
                                   :permission-path-username-middleware])
-                   :handler    qhr.handlers.user/restore-handler}}]))
+                   :handler    (qhr.handlers.user/restore-handler ctx)}}]))
 
 (defn reset-routes
   [ctx]
@@ -84,4 +84,4 @@
                                  [[:qahira-token-authentication-middleware :reset]
                                   :authenticated-middleware
                                   :permission-path-username-middleware])
-                   :handler    qhr.handlers.user/reset-password-handler}}]))
+                   :handler    (qhr.handlers.user/reset-password-handler ctx)}}]))

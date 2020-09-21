@@ -6,8 +6,7 @@
    [qahira.edge.db :as qhr.edge.db]
    [qahira.edge.token-encoder :as qhr.edge.token-enc]
    [ring.util.http-response :as http.res]
-   [taoensso.encore :as e]))
-
+   [taoensso.encore :as e :refer [catching]]))
 
 (def authenticated-middleware
   {:name ::authenticated
@@ -57,7 +56,7 @@
   {:name ::basic-authentication
    :wrap (fn [handler]
            (let [authfn   (fn [_ credential]
-                            (e/catching
+                            (catching
                               (e/when-let [username (:username credential)
                                            password (:password credential)]
                                 (qhr.edge.db/login-user database username password))))
@@ -68,15 +67,15 @@
   [{:keys [api-token-encoder auth-token-encoder config]}]
   {:name ::qahira-token-authentication
    :wrap (fn [handler kind]
-           (let [token-encoder (if (= :api kind)
-                                 api-token-encoder
-                                 auth-token-encoder)
-                 authfn        (fn [_ token]
-                                 (e/catching
-                                   (qhr.edge.token-enc/read-token token-encoder token kind)))
-                 settings      (e/merge
-                                 {:backend    :token
-                                  :authfn     authfn
-                                  :token-name "QahiraToken"}
-                                 (select-keys config [:token-name]))]
+           (let [encoder  (if (= :api kind)
+                            api-token-encoder
+                            auth-token-encoder)
+                 authfn   (fn [_ token]
+                            (catching
+                              (qhr.edge.token-enc/read-token encoder token kind)))
+                 settings (e/merge
+                            {:backend    :token
+                             :authfn     authfn
+                             :token-name "QahiraToken"}
+                            (select-keys config [:token-name]))]
              (wrap-authentication handler settings)))})

@@ -1,21 +1,25 @@
 (ns qahira.edge.qahira-client
+  (:refer-clojure :exclude [if-let])
   (:require
+   [clojure.string :as str]
    [orchid.components.http-client :as orc.c.httpc]
+   [orchid.edge.logger :refer [debug]]
+   [qahira.edge.token-encoder :as qhr.edge.token-enc]
    [qahira.routes.meta :as qhr.routes.meta]
    [qahira.routes.token :as qhr.routes.token]
    [qahira.routes.user :as qhr.routes.user]
    [reitit.core :as reit]
-   [taoensso.encore :as e]))
+   [taoensso.encore :as e :refer [if-let catching]]))
 
 (defprotocol QahiraClient
   (request-condition [qahira-client])
-  (request-token [qahira-client kind username params])
-  (register-user [qahira-client params])
-  (login-user [qahira-client username params])
-  (delete-user [qahira-client username params])
-  (update-user-password [qahira-client username params])
-  (restore-handler [qahira-client username params])
-  (reset-user-password [qahira-client username params]))
+  (request-token [qahira-client kind username request])
+  (register-user [qahira-client request])
+  (login-user [qahira-client username request])
+  (delete-user [qahira-client username request])
+  (update-user-password [qahira-client username request])
+  (restore-user [qahira-client username request])
+  (reset-user-password [qahira-client username request]))
 
 (defn- build-uri
   [ring-router path-params]
@@ -28,7 +32,7 @@
 
 (defn- wrap-body
   [request config]
-  (let [content-type (:content-type config :json)]
+  (let [content-type (:content-type config)]
     (e/assoc-when request
                   :accept content-type
                   :as content-type
@@ -37,9 +41,9 @@
 
 (defn- wrap-basic-auth
   [request]
-  (e/if-let [basic-auth (:basic-auth request)
-             username   (:username basic-auth)
-             password   (:password basic-auth)]
+  (if-let [basic-auth (:basic-auth request)
+           username   (:username basic-auth)
+           password   (:password basic-auth)]
     (assoc request :basic-auth [username password])
     request))
 
@@ -48,73 +52,65 @@
   (assoc-in request [:headers "authorization"] (str scheme " " token)))
 
 (defn- wrap-qahira-token-auth
-  [request]
-  (if-let [qahira-token-auth (:qahira-token-auth request)]
+  [request token-encoder kind]
+  (if-let [kw    (keyword (str/join "-" ["qahira" (name kind) "token" "auth"]))
+           auth  (get request kw)
+           token (if (map? auth)
+                   (qhr.edge.token-enc/make-token token-encoder auth kind)
+                   auth)]
     (-> request
-        (dissoc :qahira-token-auth)
-        (assoc-authz-token "QahiraToken" qahira-token-auth))
+        (dissoc kw)
+        (assoc-authz-token "QahiraToken" token))
     request))
 
 (defn- run-request
   [qahira-client http-method target request]
-  (let [uri         (build-uri (:ring-router qahira-client) target)
-        new-request (-> request
-                        (wrap-body (:config qahira-client))
-                        (wrap-basic-auth)
-                        (wrap-qahira-token-auth))]
-    (orc.c.httpc/request qahira-client http-method uri new-request)))
-
-(defn- inject-basic-auth
-  [request params]
-  (e/assoc-when request :basic-auth (:auth params)))
-
-(defn- inject-qahira-token-auth
-  [request params]
-  (e/assoc-when request :qahira-token-auth (:auth params)))
-
-(defn- inject-form-params
-  [request params]
-  (e/assoc-when request :form-params (:form-params params)))
+  (let [uri                (build-uri (:ring-router qahira-client) target)
+        api-token-encoder  (:api-token-encoder qahira-client)
+        auth-token-encoder (:auth-token-encoder qahira-client)
+        new-request        (-> request
+                               (wrap-body (:config qahira-client))
+                               (wrap-basic-auth)
+                               (wrap-qahira-token-auth auth-token-encoder :auth)
+                               (wrap-qahira-token-auth auth-token-encoder :reset)
+                               (wrap-qahira-token-auth auth-token-encoder :restore)
+                               (wrap-qahira-token-auth api-token-encoder :api))
+        logger             (:logger qahira-client)]
+    (debug logger ::run-request {:uri uri :request new-request})
+    (catching
+      (orc.c.httpc/request qahira-client http-method uri new-request)
+      err
+      (do (debug (:logger qahira-client) ::run-request err)
+          (e/error-data err)))))
 
 (extend-protocol QahiraClient
   orchid.components.http_client.HttpClient
   (request-condition [qahira-client]
     (run-request qahira-client :get {:name ::qhr.routes.meta/anon} {}))
-  (request-token [qahira-client kind username params]
-    (let [target  {:name   ::qhr.routes.token/target
-                   :params {:kind kind :username username}}
-          request (inject-qahira-token-auth {} params)]
+  (request-token [qahira-client kind username request]
+    (let [target {:name   ::qhr.routes.token/target
+                  :params {:kind kind :username username}}]
       (run-request qahira-client :get target request)))
-  (register-user [qahira-client params]
-    (let [target  {:name ::qhr.routes.user/anon}
-          request (inject-form-params {} params)]
+  (register-user [qahira-client request]
+    (let [target {:name ::qhr.routes.user/anon}]
       (run-request qahira-client :post target request)))
-  (login-user [qahira-client username params]
-    (let [target  {:name   ::qhr.routes.user/target
-                   :params {:username username}}
-          request (inject-basic-auth {} params)]
+  (login-user [qahira-client username request]
+    (let [target {:name   ::qhr.routes.user/target
+                  :params {:username username}}]
       (run-request qahira-client :post target request)))
-  (delete-user [qahira-client username params]
-    (let [target  {:name   ::qhr.routes.user/target
-                   :params {:username username}}
-          request (inject-qahira-token-auth {} params)]
+  (delete-user [qahira-client username request]
+    (let [target {:name   ::qhr.routes.user/target
+                  :params {:username username}}]
       (run-request qahira-client :delete target request)))
-  (update-user-password [qahira-client username params]
-    (let [target  {:name   ::qhr.routes.user/target
-                   :params {:username username}}
-          request (-> {}
-                      (inject-qahira-token-auth params)
-                      (inject-form-params params))]
+  (update-user-password [qahira-client username request]
+    (let [target {:name   ::qhr.routes.user/target
+                  :params {:username username}}]
       (run-request qahira-client :put target request)))
-  (restore-handler [qahira-client username params]
-    (let [target  {:name   ::qhr.routes.user/restore
-                   :params {:username username}}
-          request (inject-qahira-token-auth {} params)]
+  (restore-user [qahira-client username request]
+    (let [target {:name   ::qhr.routes.user/restore
+                  :params {:username username}}]
       (run-request qahira-client :post target request)))
-  (reset-user-password [qahira-client username params]
-    (let [target  {:name   ::qhr.routes.user/reset
-                   :params {:username username}}
-          request (-> {}
-                      (inject-qahira-token-auth params)
-                      (inject-form-params params))]
+  (reset-user-password [qahira-client username request]
+    (let [target {:name   ::qhr.routes.user/reset
+                  :params {:username username}}]
       (run-request qahira-client :put target request))))

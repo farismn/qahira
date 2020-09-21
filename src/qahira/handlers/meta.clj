@@ -4,5 +4,6 @@
 
 (defn request-condition-handler
   [_]
-  (http.res/ok {:meta {:condition {:name     "qahira"
-                                   :healthy? true}}}))
+  (fn [_]
+    (http.res/ok {:meta {:condition {:name     "qahira"
+                                     :healthy? true}}})))

@@ -123,49 +123,55 @@
              (make-token-encoder-system config)
              (make-logger-system config))
       (c/system-using
-        {:ring-router            [:meta-anon-routes
-                                  :token-target-routes
-                                  :user-anon-routes
-                                  :user-target-routes
-                                  :user-restore-routes
-                                  :user-reset-routes]
-         :ring-options           [:parameters-middleware
-                                  :format-middleware
-                                  :exception-middleware
-                                  :log-request-middleware
-                                  :cors-middleware
-                                  :coerce-exceptions-middleware
-                                  :coerce-request-middleware
-                                  :coerce-response-middleware]
-         :log-request-middleware [:logger]
-         :token-target-routes    [:auth-token-encoder
-                                  :qahira-token-authentication-middleware
-                                  :authenticated-middleware
-                                  :permission-path-username-middleware]
-         :user-anon-routes       [:database :auth-token-encoder]
-         :user-target-routes     [:database
-                                  :auth-token-encoder
-                                  :basic-authentication-middleware
-                                  :qahira-token-authentication-middleware
-                                  :authenticated-middleware
-                                  :permission-path-username-middleware]
-         :user-restore-routes    [:database
-                                  :auth-token-encoder
-                                  :qahira-token-authentication-middleware
-                                  :authenticated-middleware
-                                  :permission-path-username-middleware]
-         :user-reset-routes      [:database
-                                  :auth-token-encoder
-                                  :qahira-token-authentication-middleware
-                                  :authenticated-middleware
-                                  :permission-path-username-middleware]})))
+        {:ring-router                            [:meta-anon-routes
+                                                  :token-target-routes
+                                                  :user-anon-routes
+                                                  :user-target-routes
+                                                  :user-restore-routes
+                                                  :user-reset-routes]
+         :ring-options                           [:parameters-middleware
+                                                  :format-middleware
+                                                  :exception-middleware
+                                                  :log-request-middleware
+                                                  :cors-middleware
+                                                  :coerce-exceptions-middleware
+                                                  :coerce-request-middleware
+                                                  :coerce-response-middleware]
+         :log-request-middleware                 [:logger]
+         :basic-authentication-middleware        [:database]
+         :qahira-token-authentication-middleware [:api-token-encoder
+                                                  :auth-token-encoder]
+         :token-target-routes                    [:auth-token-encoder
+                                                  :qahira-token-authentication-middleware
+                                                  :authenticated-middleware
+                                                  :permission-path-username-middleware]
+         :user-anon-routes                       [:database :auth-token-encoder]
+         :user-target-routes                     [:database
+                                                  :auth-token-encoder
+                                                  :basic-authentication-middleware
+                                                  :qahira-token-authentication-middleware
+                                                  :authenticated-middleware
+                                                  :permission-path-username-middleware]
+         :user-restore-routes                    [:database
+                                                  :auth-token-encoder
+                                                  :qahira-token-authentication-middleware
+                                                  :authenticated-middleware
+                                                  :permission-path-username-middleware]
+         :user-reset-routes                      [:database
+                                                  :auth-token-encoder
+                                                  :qahira-token-authentication-middleware
+                                                  :authenticated-middleware
+                                                  :permission-path-username-middleware]})))
 
 (defn- make-app-dev-system
   [config]
   (-> (merge (make-app-base-system config)
              (make-qahira-client-system config))
       (c/system-using
-        {:qahira-client [:ring-router]})))
+        {:qahira-client [:ring-router
+                         :api-token-encoder
+                         :auth-token-encoder
+                         :logger]})))
 
 (def ^:private systems-map
   {:app/prod make-app-base-system
