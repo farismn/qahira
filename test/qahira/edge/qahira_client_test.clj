@@ -20,138 +20,187 @@
   (ml.gen/generator
     (ml.u/update qhr.edge.db/PasswordUpdatee
                  :old-password
-                 ml.u/update-properties assoc :gen/gen (t.gen/return password))))
+                 ml.u/update-properties
+                 assoc :gen/gen (t.gen/return password))))
+
+(defn- request-condition
+  []
+  (qhr.edge.qhrc/request-condition
+    (qhr.t.fxt/get-component! :qahira-client)))
+
+(defn- register-user
+  [request]
+  (qhr.edge.qhrc/register-user
+    (qhr.t.fxt/get-component! :qahira-client)
+    request))
+
+(defn- request-token
+  [kind username request]
+  (qhr.edge.qhrc/request-token
+    (qhr.t.fxt/get-component! :qahira-client)
+    kind
+    username
+    request))
+
+(defn- login-user
+  [username request]
+  (qhr.edge.qhrc/login-user
+    (qhr.t.fxt/get-component! :qahira-client)
+    username
+    request))
+
+(defn- delete-user
+  [username request]
+  (qhr.edge.qhrc/delete-user
+    (qhr.t.fxt/get-component! :qahira-client)
+    username
+    request))
+
+(defn- update-user-password
+  [username request]
+  (qhr.edge.qhrc/update-user-password
+    (qhr.t.fxt/get-component! :qahira-client)
+    username
+    request))
+
+(defn- restore-user
+  [username request]
+  (qhr.edge.qhrc/restore-user
+    (qhr.t.fxt/get-component! :qahira-client)
+    username
+    request))
+
+(defn- reset-user-password
+  [username request]
+  (qhr.edge.qhrc/reset-user-password
+    (qhr.t.fxt/get-component! :qahira-client)
+    username
+    request))
 
 (defexpect request-condition-test
   (expecting "app condition fetched"
-    (let [qahira-client (qhr.t.fxt/get-component! :qahira-client)]
-      (expecting "success"
-        (expect http.pred/ok?
-          (qhr.edge.qhrc/request-condition qahira-client))))))
+    (expecting "success"
+      (expect http.pred/ok?
+        (request-condition)))))
 
 (defexpect request-token-test
   (expecting "token fetched"
-    (let [qahira-client (qhr.t.fxt/get-component! :qahira-client)
-          user          (t.gen/generate qhr.t.gen/new-user-generator)]
-      (qhr.edge.qhrc/register-user qahira-client {:form-params {:user user}})
+    (let [user (t.gen/generate qhr.t.gen/new-user-generator)]
+      (register-user {:form-params {:user user}})
       (expecting "unknown kind"
         (expect http.pred/bad-request?
           (let [kind     (t.gen/generate qhr.t.gen/kind-generator)
                 username (:username user)]
-            (qhr.edge.qhrc/request-token qahira-client kind username {}))))
+            (request-token kind username {}))))
       (expecting "unauthenticated"
         (expect http.pred/unauthorized?
-          (from-each [kind [:reset :restore]]
-            (let [username (:username user)]
-              (qhr.edge.qhrc/request-token qahira-client kind username {})))))
+          (from-each [kind [:reset :restore]
+                      :let [username (:username user)]]
+            (request-token kind username {}))))
       (expecting "not enough permission"
         (expect http.pred/forbidden?
-          (from-each [kind [:reset :restore]]
-            (let [username (t.gen/generate qhr.t.gen/username-generator)
-                  params   {:qahira-api-token-auth user}]
-              (qhr.edge.qhrc/request-token qahira-client kind username params)))))
+          (from-each [kind [:reset :restore]
+                      :let [username (t.gen/generate qhr.t.gen/username-generator)
+                            params   {:qahira-api-token-auth user}]]
+            (request-token kind username params))))
       (expecting "success"
         (expect http.pred/ok?
           (from-each [kind     [:reset :restore]
                       username [(:username user)
-                                (t.gen/generate qhr.t.gen/username-generator)]]
-            (let [auth   (assoc user :username username)
-                  params {:qahira-api-token-auth auth}]
-              (qhr.edge.qhrc/request-token qahira-client kind username params))))))))
+                                (t.gen/generate qhr.t.gen/username-generator)]
+                      :let     [auth   (assoc user :username username)
+                                params {:qahira-api-token-auth auth}]]
+            (request-token kind username params)))))))
 
 (defexpect register-user-test
   (expecting "user registered"
-    (let [qahira-client (qhr.t.fxt/get-component! :qahira-client)
-          user          (t.gen/generate qhr.t.gen/new-user-generator)]
+    (let [user (t.gen/generate qhr.t.gen/new-user-generator)]
       (expecting "malformed body"
         (expect http.pred/bad-request?
-          (qhr.edge.qhrc/register-user qahira-client {})))
+          (register-user {})))
       (expecting "success"
         (expect http.pred/ok?
-          (qhr.edge.qhrc/register-user qahira-client {:form-params {:user user}})))
+          (register-user {:form-params {:user user}})))
       (expecting "unique constraint"
         (expect http.pred/conflict?
-          (qhr.edge.qhrc/register-user qahira-client {:form-params {:user user}}))))))
+          (register-user {:form-params {:user user}}))))))
 
 (defexpect login-user-test
   (expecting "received auth token"
-    (let [qahira-client (qhr.t.fxt/get-component! :qahira-client)
-          user          (t.gen/generate qhr.t.gen/new-user-generator)]
-      (qhr.edge.qhrc/register-user qahira-client {:form-params {:user user}})
+    (let [user (t.gen/generate qhr.t.gen/new-user-generator)]
+      (register-user {:form-params {:user user}})
       (expecting "unauthenticated"
         (expect http.pred/unauthorized?
           (let [username (:username user)]
-            (qhr.edge.qhrc/login-user qahira-client username {})))
+            (login-user username {})))
         (expect http.pred/unauthorized?
           (let [username (t.gen/generate qhr.t.gen/username-generator)
                 password (t.gen/generate qhr.t.gen/password-generator)
                 request  {:basic-auth {:username username :password password}}]
-            (qhr.edge.qhrc/login-user qahira-client username request))))
+            (login-user username request))))
       (expecting "not enough permission"
         (expect http.pred/forbidden?
           (let [username (t.gen/generate qhr.t.gen/username-generator)
                 request  {:basic-auth user}]
-            (qhr.edge.qhrc/login-user qahira-client username request))))
+            (login-user username request))))
       (expecting "success"
         (expect http.pred/ok?
           (let [username (:username user)
                 request  {:basic-auth user}]
-            (qhr.edge.qhrc/login-user qahira-client username request)))))))
+            (login-user username request)))))))
 
 (defexpect delete-user-test
   (expecting "user deleted"
-    (let [qahira-client (qhr.t.fxt/get-component! :qahira-client)
-          user          (t.gen/generate qhr.t.gen/new-user-generator)]
-      (qhr.edge.qhrc/register-user qahira-client {:form-params {:user user}})
+    (let [user (t.gen/generate qhr.t.gen/new-user-generator)]
+      (register-user {:form-params {:user user}})
       (expecting "unauthenticated"
         (expect http.pred/unauthorized?
           (let [username (:username user)]
-            (qhr.edge.qhrc/delete-user qahira-client username {}))))
+            (delete-user username {}))))
       (expecting "not enough permisison"
         (expect http.pred/forbidden?
           (let [username (t.gen/generate qhr.t.gen/username-generator)
                 request  {:qahira-auth-token-auth user}]
-            (qhr.edge.qhrc/delete-user qahira-client username request))))
+            (delete-user username request))))
       (expecting "non-existent user"
         (expect http.pred/bad-request?
           (let [username (t.gen/generate qhr.t.gen/username-generator)
                 request  {:qahira-auth-token-auth {:username username}}]
-            (qhr.edge.qhrc/delete-user qahira-client username request))))
+            (delete-user username request))))
       (expecting "success"
         (expect http.pred/no-content?
           (let [username (:username user)
                 request  {:qahira-auth-token-auth user}]
-            (qhr.edge.qhrc/delete-user qahira-client username request)))))))
+            (delete-user username request)))))))
 
 (defexpect update-user-password-test
   (expecting "user's password updated"
-    (let [qahira-client (qhr.t.fxt/get-component! :qahira-client)
-          user          (t.gen/generate qhr.t.gen/new-user-generator)]
-      (qhr.edge.qhrc/register-user qahira-client {:form-params {:user user}})
+    (let [user (t.gen/generate qhr.t.gen/new-user-generator)]
+      (register-user {:form-params {:user user}})
       (expecting "malformed body"
         (expect http.pred/bad-request?
           (let [username (:username user)]
-            (qhr.edge.qhrc/update-user-password qahira-client username {}))))
+            (update-user-password username {}))))
       (expecting "unauthenticated"
         (expect http.pred/unauthorized?
           (let [username (:username user)
                 updatee  (t.gen/generate qhr.t.gen/password-updatee-generator)
                 request  {:form-params {:user updatee}}]
-            (qhr.edge.qhrc/update-user-password qahira-client username request))))
+            (update-user-password username request))))
       (expecting "not enough permission"
         (expect http.pred/forbidden?
           (let [username (t.gen/generate qhr.t.gen/username-generator)
                 updatee  (t.gen/generate qhr.t.gen/password-updatee-generator)
                 request  {:qahira-auth-token-auth user
                           :form-params            {:user updatee}}]
-            (qhr.edge.qhrc/update-user-password qahira-client username request))))
+            (update-user-password username request))))
       (expecting "non-existent user"
         (expect http.pred/bad-request?
           (let [username (t.gen/generate qhr.t.gen/username-generator)
                 updatee  (t.gen/generate qhr.t.gen/password-updatee-generator)
                 request  {:qahira-auth-token-auth {:username username}
                           :form-params            {:user updatee}}]
-            (qhr.edge.qhrc/update-user-password qahira-client username request))))
+            (update-user-password username request))))
       (expecting "incorrect old password"
         (expect http.pred/bad-request?
           (let [username     (:username user)
@@ -159,7 +208,7 @@
                 updatee      (t.gen/generate (fixed-password-updatee-generator old-password))
                 request      {:qahira-auth-token-auth user
                               :form-params            {:user updatee}}]
-            (qhr.edge.qhrc/update-user-password qahira-client username request))))
+            (update-user-password username request))))
       (expecting "success"
         (expect http.pred/ok?
           (let [username     (:username user)
@@ -167,67 +216,65 @@
                 updatee      (t.gen/generate (fixed-password-updatee-generator old-password))
                 request      {:qahira-auth-token-auth user
                               :form-params            {:user updatee}}]
-            (qhr.edge.qhrc/update-user-password qahira-client username request)))))))
+            (update-user-password username request)))))))
 
 (defexpect restore-user-test
   (expecting "user restored"
-    (let [qahira-client (qhr.t.fxt/get-component! :qahira-client)
-          user          (t.gen/generate qhr.t.gen/new-user-generator)]
-      (qhr.edge.qhrc/register-user qahira-client {:form-params {:user user}})
-      (qhr.edge.qhrc/delete-user qahira-client (:username user) {:qahira-auth-token-auth user})
+    (let [user (t.gen/generate qhr.t.gen/new-user-generator)]
+      (register-user {:form-params {:user user}})
+      (delete-user (:username user) {:qahira-auth-token-auth user})
       (expecting "unauthenticated"
         (expect http.pred/unauthorized?
           (let [username (:username user)]
-            (qhr.edge.qhrc/restore-user qahira-client username {}))))
+            (restore-user username {}))))
       (expecting "not enough permission"
         (expect http.pred/forbidden?
           (let [username (t.gen/generate qhr.t.gen/username-generator)
                 request  {:qahira-restore-token-auth user}]
-            (qhr.edge.qhrc/restore-user qahira-client username request))))
+            (restore-user username request))))
       (expecting "non-existent user"
         (expect http.pred/bad-request?
           (let [username (t.gen/generate qhr.t.gen/username-generator)
                 request  {:qahira-restore-token-auth {:username username}}]
-            (qhr.edge.qhrc/restore-user qahira-client username request))))
+            (restore-user username request))))
       (expecting "success"
         (expect http.pred/ok?
           (let [username (:username user)
                 request  {:qahira-restore-token-auth user}]
-            (qhr.edge.qhrc/restore-user qahira-client username request)))))))
+            (restore-user username request)))))))
 
 (defexpect reset-user-password-test
   (expecting "user's password reseted"
-    (let [qahira-client (qhr.t.fxt/get-component! :qahira-client)
-          user          (t.gen/generate qhr.t.gen/new-user-generator)]
-      (qhr.edge.qhrc/register-user qahira-client {:form-params {:user user}})
+    (let [user (t.gen/generate qhr.t.gen/new-user-generator)]
+      (register-user {:form-params {:user user}})
       (expecting "malformed body"
         (expect http.pred/bad-request?
           (let [username (:username user)]
-            (qhr.edge.qhrc/reset-user-password qahira-client username {}))))
+            (reset-user-password username {}))))
       (expecting "unauthenticated"
         (expect http.pred/unauthorized?
           (let [username (:username user)
                 resetee  (t.gen/generate qhr.t.gen/password-resetee-generator)
                 request  {:form-params {:user resetee}}]
-            (qhr.edge.qhrc/reset-user-password qahira-client username request))))
+            (reset-user-password username request))))
       (expecting "not enough permission"
         (expect http.pred/forbidden?
           (let [username (t.gen/generate qhr.t.gen/username-generator)
                 resetee  (t.gen/generate qhr.t.gen/password-resetee-generator)
                 request  {:qahira-reset-token-auth user
                           :form-params             {:user resetee}}]
-            (qhr.edge.qhrc/reset-user-password qahira-client username request))))
+            (reset-user-password username request))))
       (expecting "non-existent user"
         (expect http.pred/bad-request?
           (let [username (t.gen/generate qhr.t.gen/username-generator)
                 resetee  (t.gen/generate qhr.t.gen/password-resetee-generator)
                 request  {:qahira-reset-token-auth {:username username}
                           :form-params             {:user resetee}}]
-            (qhr.edge.qhrc/reset-user-password qahira-client username request))))
+            (reset-user-password username request))))
       (expecting "success"
         (expect http.pred/ok?
           (let [username (:username user)
                 resetee  (t.gen/generate qhr.t.gen/password-resetee-generator)
                 request  {:qahira-reset-token-auth user
                           :form-params             {:user resetee}}]
-            (qhr.edge.qhrc/reset-user-password qahira-client username request)))))))
+            (reset-user-password username request)))))))

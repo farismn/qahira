@@ -2,5 +2,5 @@
            taoensso.encore/if-let              clojure.core/let
            expectations.clojure.test/defexpect clojure.test/deftest
            expectations.clojure.test/expecting clojure.test/testing
-           expectations.clojure.test/from-each clojure.core/let}
+           expectations.clojure.test/from-each clojure.core/for}
  :linters {:unresolved-symbol {:exclude [(taoensso.encore/catching)]}}}
