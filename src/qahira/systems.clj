@@ -181,7 +181,10 @@
 
 (defn make-system
   [source system-kind]
-  (let [profile   (-> system-kind name keyword)
-        system-fn (get systems-map system-kind)
-        config    (aero/read-config source {:profile profile})]
+  (let [system-fn (or (get systems-map system-kind)
+                      (throw (ex-info "unknown system kind" {:system-kind system-kind})))
+        profile   (-> system-kind name keyword)
+        config    (if (map? source)
+                    source
+                    (aero/read-config source {:profile profile}))]
     (system-fn config)))
