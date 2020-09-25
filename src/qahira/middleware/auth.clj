@@ -4,7 +4,7 @@
    [buddy.auth.backends :as buddy.backends]
    [buddy.auth.middleware :as buddy.mdw]
    [qahira.edge.db :as qhr.edge.db]
-   [qahira.edge.token-encoder :as qhr.edge.token-enc]
+   [qahira.edge.token-encoder :as qhr.edge.tokenenc]
    [ring.util.http-response :as http.res]
    [taoensso.encore :as e :refer [catching]]))
 
@@ -72,7 +72,7 @@
                             auth-token-encoder)
                  authfn   (fn [_ token]
                             (catching
-                              (qhr.edge.token-enc/read-token encoder token kind)))
+                              (qhr.edge.tokenenc/read-token encoder token kind)))
                  settings (e/merge
                             {:backend    :token
                              :authfn     authfn

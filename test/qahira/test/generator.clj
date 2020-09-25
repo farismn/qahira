@@ -2,7 +2,7 @@
   (:require
    [malli.generator :as ml.gen]
    [qahira.edge.db :as qhr.edge.db]
-   [qahira.edge.token-encoder :as qhr.edge.token-enc]))
+   [qahira.edge.token-encoder :as qhr.edge.tokenenc]))
 
 (def ^:private default-generator-options
   {:size 20
@@ -24,4 +24,4 @@
   (ml.gen/generator qhr.edge.db/PasswordUpdatee default-generator-options))
 
 (def kind-generator
-  (ml.gen/generator qhr.edge.token-enc/Kind default-generator-options))
+  (ml.gen/generator qhr.edge.tokenenc/Kind default-generator-options))

@@ -2,9 +2,9 @@
   (:refer-clojure :exclude [if-let])
   (:require
    [clojure.string :as str]
-   [orchid.components.http-client :as orc.c.httpc]
+   [orchid.components.http-client :as orc.c.httpclt]
    [orchid.edge.logger :refer [debug]]
-   [qahira.edge.token-encoder :as qhr.edge.token-enc]
+   [qahira.edge.token-encoder :as qhr.edge.tokenenc]
    [qahira.routes.meta :as qhr.routes.meta]
    [qahira.routes.token :as qhr.routes.token]
    [qahira.routes.user :as qhr.routes.user]
@@ -56,7 +56,7 @@
   (if-let [kw    (keyword (str/join "-" ["qahira" (name kind) "token" "auth"]))
            auth  (get request kw)
            token (if (map? auth)
-                   (qhr.edge.token-enc/make-token token-encoder auth kind)
+                   (qhr.edge.tokenenc/make-token token-encoder auth kind)
                    auth)]
     (-> request
         (dissoc kw)
@@ -78,7 +78,7 @@
         logger             (:logger qahira-client)]
     (debug logger ::run-request {:uri uri :request new-request})
     (catching
-      (orc.c.httpc/request qahira-client http-method uri new-request)
+      (orc.c.httpclt/request qahira-client http-method uri new-request)
       err
       (do (debug (:logger qahira-client) ::run-request err)
           (e/error-data err)))))

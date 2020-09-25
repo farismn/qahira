@@ -3,7 +3,7 @@
    [clj-time.core :as time]
    [malli.core :as ml]
    [malli.transform :as ml.transform]
-   [orchid.components.jwt-encoder :as orc.c.jwt-enc]
+   [orchid.components.jwt-encoder :as orc.c.jwtenc]
    [taoensso.encore :as e]))
 
 (defprotocol TokenEncoder
@@ -45,14 +45,14 @@
   (-encode [token-encoder claims]
     (let [duration   (-> token-encoder :config :duration)
           new-claims (assoc-time claims duration)]
-      (orc.c.jwt-enc/encode token-encoder new-claims)))
+      (orc.c.jwtenc/encode token-encoder new-claims)))
   (-decode [token-encoder token]
-    (orc.c.jwt-enc/decode token-encoder token))
+    (orc.c.jwtenc/decode token-encoder token))
 
   orchid.components.jwt_encoder.AsymmetricSigner
   (-encode [token-encoder claims]
     (let [duration   (-> token-encoder :config :duration)
           new-claims (assoc-time claims duration)]
-      (orc.c.jwt-enc/encode token-encoder new-claims)))
+      (orc.c.jwtenc/encode token-encoder new-claims)))
   (-decode [token-encoder token]
-    (orc.c.jwt-enc/decode token-encoder token)))
+    (orc.c.jwtenc/decode token-encoder token)))

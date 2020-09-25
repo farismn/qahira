@@ -4,17 +4,16 @@
    [com.stuartsierra.component :as c]
    [muuntaja.core :as mtj]
    [orchid.components.hikari-cp :as orc.c.hikari]
-   [orchid.components.http-client :as orc.c.httpc]
+   [orchid.components.http-client :as orc.c.httpclt]
    [orchid.components.http-kit :as orc.c.httpk]
-   [orchid.components.jwt-encoder :as orc.c.jwt-enc]
+   [orchid.components.jwt-encoder :as orc.c.jwtenc]
    [orchid.components.migratus :as orc.c.migratus]
-   [orchid.components.reitit-ring :as orc.c.reit-ring]
+   [orchid.components.reitit-ring :as orc.c.reitring]
    [orchid.components.timbre :as orc.c.timbre]
    [qahira.middleware.auth :as qhr.mdw.auth]
    [qahira.middleware.cors :as qhr.mdw.cors]
    [qahira.middleware.exception :as qhr.mdw.ex]
    [qahira.middleware.log :as qhr.mdw.log]
-   [qahira.middleware.util :as qhr.mdw.u]
    [qahira.routes.meta :as qhr.routes.meta]
    [qahira.routes.token :as qhr.routes.token]
    [qahira.routes.user :as qhr.routes.user]
@@ -32,7 +31,7 @@
   (letfn [(router-options [component]
             {:data {:muuntaja   mtj/instance
                     :coercion   reit.coerce.ml/coercion
-                    :middleware (qhr.mdw.u/run-middlewares
+                    :middleware (orc.c.reitring/extract-middlewares
                                   component
                                   [:parameters-middleware
                                    :format-middleware
@@ -44,9 +43,9 @@
                                    :coerce-response-middleware])}})]
     (-> (c/system-map
           :http-server  (orc.c.httpk/make-http-server (:qahira/http-server config))
-          :ring-handler (orc.c.reit-ring/make-ring-handler)
-          :ring-router  (orc.c.reit-ring/make-ring-router)
-          :ring-options (orc.c.reit-ring/make-ring-options router-options))
+          :ring-handler (orc.c.reitring/make-ring-handler)
+          :ring-router  (orc.c.reitring/make-ring-router)
+          :ring-options (orc.c.reitring/make-ring-options router-options))
         (c/system-using
           {:http-server  {:handler :ring-handler}
            :ring-handler {:router :ring-router}
@@ -57,7 +56,7 @@
   (letfn [(make-ring-middleware
             ([middleware config]
              (-> (as-fn middleware)
-                 (orc.c.reit-ring/make-ring-middleware)
+                 (orc.c.reitring/make-ring-middleware)
                  (assoc :config config)))
             ([middleware]
              (make-ring-middleware middleware {})))]
@@ -78,12 +77,12 @@
 (defn- make-ring-routes-system
   [_config]
   (c/system-map
-    :meta-anon-routes    (orc.c.reit-ring/make-ring-routes qhr.routes.meta/anon-routes)
-    :token-target-routes (orc.c.reit-ring/make-ring-routes qhr.routes.token/target-routes)
-    :user-anon-routes    (orc.c.reit-ring/make-ring-routes qhr.routes.user/anon-routes)
-    :user-target-routes  (orc.c.reit-ring/make-ring-routes qhr.routes.user/target-routes)
-    :user-restore-routes (orc.c.reit-ring/make-ring-routes qhr.routes.user/restore-routes)
-    :user-reset-routes   (orc.c.reit-ring/make-ring-routes qhr.routes.user/reset-routes)))
+    :meta-anon-routes    (orc.c.reitring/make-ring-routes qhr.routes.meta/anon-routes)
+    :token-target-routes (orc.c.reitring/make-ring-routes qhr.routes.token/target-routes)
+    :user-anon-routes    (orc.c.reitring/make-ring-routes qhr.routes.user/anon-routes)
+    :user-target-routes  (orc.c.reitring/make-ring-routes qhr.routes.user/target-routes)
+    :user-restore-routes (orc.c.reitring/make-ring-routes qhr.routes.user/restore-routes)
+    :user-reset-routes   (orc.c.reitring/make-ring-routes qhr.routes.user/reset-routes)))
 
 (defn- make-database-system
   [config]
@@ -98,8 +97,8 @@
 (defn- make-token-encoder-system
   [config]
   (c/system-map
-    :auth-token-encoder (orc.c.jwt-enc/make-jwt-encoder (:qahira/auth-token-encoder config))
-    :api-token-encoder  (orc.c.jwt-enc/make-jwt-encoder (:qahira/api-token-encoder config))))
+    :auth-token-encoder (orc.c.jwtenc/make-jwt-encoder (:qahira/auth-token-encoder config))
+    :api-token-encoder  (orc.c.jwtenc/make-jwt-encoder (:qahira/api-token-encoder config))))
 
 (defn- make-logger-system
   [config]
@@ -112,7 +111,7 @@
 (defn- make-qahira-client-system
   [config]
   (c/system-map
-    :qahira-client (orc.c.httpc/make-http-client (:qahira/qahira-client config))))
+    :qahira-client (orc.c.httpclt/make-http-client (:qahira/qahira-client config))))
 
 (defn- make-app-base-system
   [config]

@@ -1,12 +1,12 @@
 (ns qahira.handlers.user
   (:require
    [qahira.edge.db :as qhr.edge.db]
-   [qahira.edge.token-encoder :as qhr.edge.token-enc]
+   [qahira.edge.token-encoder :as qhr.edge.tokenenc]
    [ring.util.http-response :as http.res]))
 
 (defn- render-auth-token
   [{:keys [auth-token-encoder]} attrs]
-  (let [token (qhr.edge.token-enc/make-token auth-token-encoder attrs :auth)]
+  (let [token (qhr.edge.tokenenc/make-token auth-token-encoder attrs :auth)]
     {:token {:auth token}}))
 
 (defn register-handler
