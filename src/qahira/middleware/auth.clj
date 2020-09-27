@@ -1,4 +1,5 @@
 (ns qahira.middleware.auth
+  (:refer-clojure :exclude [when-let])
   (:require
    [buddy.auth]
    [buddy.auth.backends :as buddy.backends]
@@ -6,7 +7,7 @@
    [qahira.edge.db :as qhr.edge.db]
    [qahira.edge.token-encoder :as qhr.edge.tokenenc]
    [ring.util.http-response :as http.res]
-   [taoensso.encore :as e :refer [catching]]))
+   [taoensso.encore :as e :refer [catching when-let]]))
 
 (def authenticated-middleware
   {:name ::authenticated
@@ -51,31 +52,35 @@
         backend    (backend-fn new-opts)]
     (buddy.mdw/wrap-authentication handler backend)))
 
-(defn basic-authentication-middleware
-  [{:keys [database]}]
-  {:name ::basic-authentication
-   :wrap (fn [handler]
-           (let [authfn   (fn [_ credential]
-                            (catching
-                              (e/when-let [username (:username credential)
-                                           password (:password credential)]
-                                (qhr.edge.db/login-user database username password))))
-                 settings {:backend :basic :authfn authfn}]
-             (wrap-authentication handler settings)))})
+(def basic-authentication-middleware
+  {:name    ::basic-authentication
+   :compile (fn [{:keys [services]} _]
+              (fn [handler]
+                (let [db       (:database services)
+                      authfn   (fn [_ credential]
+                                 (catching
+                                   (when-let [username (:username credential)
+                                              password (:password credential)]
+                                     (qhr.edge.db/login-user db username password))))
+                      settings {:backend :basic :authfn authfn}]
+                  (wrap-authentication handler settings))))})
 
-(defn qahira-token-authentication-middleware
-  [{:keys [api-token-encoder auth-token-encoder config]}]
-  {:name ::qahira-token-authentication
-   :wrap (fn [handler kind]
-           (let [encoder  (if (= :api kind)
-                            api-token-encoder
-                            auth-token-encoder)
-                 authfn   (fn [_ token]
-                            (catching
-                              (qhr.edge.tokenenc/read-token encoder token kind)))
-                 settings (e/merge
-                            {:backend    :token
-                             :authfn     authfn
-                             :token-name "QahiraToken"}
-                            (select-keys config [:token-name]))]
-             (wrap-authentication handler settings)))})
+(def qahira-token-authentication-middleware
+  {:name    ::qahira-token-authentication
+   :compile (fn [{:keys [services config]} _]
+              (fn [handler kind]
+                (let [encoder   (if (= :api kind)
+                                  (:api-token-encoder services)
+                                  (:auth-token-encoder services))
+                      authfn    (fn [_ token]
+                                  (catching
+                                    (qhr.edge.tokenenc/read-token encoder token kind)))
+                      config-kw (e/merge-keywords [::qahira-token-authentication kind])
+                      settings  (e/merge
+                                  {:backend    :token
+                                   :authfn     authfn
+                                   :token-name "QahiraToken"}
+                                  (-> config
+                                      (get config-kw)
+                                      (select-keys [:token-name])))]
+                  (wrap-authentication handler settings))))})

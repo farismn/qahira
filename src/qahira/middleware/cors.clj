@@ -14,14 +14,10 @@
         (e/update-in [:access-control-allow-origin] [] as-regexes)
         (as-> <> (e/remove-vals empty? <>)))))
 
-(defn cors-middleware
-  [component]
+(def cors-middleware
   {:name    ::cors
-   :compile (fn [context _]
-              (when-let [config (some-> (or (:config component)
-                                            (-> context :config ::cors))
-                                        (cors-settings)
-                                        (not-empty))]
+   :compile (fn [{:keys [config]} _]
+              (when-let [config (some-> config ::cors cors-settings not-empty)]
                 (fn [handler]
                   (let [args (into [] (mapcat identity) config)]
                     (apply ring.mdw.cors/wrap-cors handler args)))))})

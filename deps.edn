@@ -1,23 +1,23 @@
 {:paths   ["src" "resources"]
  :deps    {org.clojure/clojure                 {:mvn/version "1.10.2-alpha1"}
            farismn/orchid                      {:git/url "https://github.com/farismn/orchid"
-                                                :sha     "271af765147c05ca0b19a95b66a8da7ca18cb42e"}
+                                                :sha     "ec6b93334b6dde533f78ccfd024cedb742afc0f0"}
            com.stuartsierra/component          {:mvn/version "1.0.0"}
            aero                                {:mvn/version "1.1.6"}
-           http-kit/http-kit                   {:mvn/version "2.5.0-SNAPSHOT"}
-           metosin/reitit-core                 {:mvn/version "0.5.5"}
-           metosin/reitit-ring                 {:mvn/version "0.5.5"}
-           metosin/reitit-middleware           {:mvn/version "0.5.5"}
-           metosin/reitit-malli                {:mvn/version "0.5.5"}
+           http-kit/http-kit                   {:mvn/version "2.5.0"}
+           metosin/reitit-core                 {:mvn/version "0.5.6"}
+           metosin/reitit-ring                 {:mvn/version "0.5.6"}
+           metosin/reitit-middleware           {:mvn/version "0.5.6"}
+           metosin/reitit-malli                {:mvn/version "0.5.6"}
            metosin/ring-http-response          {:mvn/version "0.9.1"}
            metosin/muuntaja                    {:mvn/version "0.6.7"}
            ring-cors/ring-cors                 {:mvn/version "0.1.13"}
            ring-logger/ring-logger             {:mvn/version "1.0.1"}
-           buddy/buddy-core                    {:mvn/version "1.6.0"}
-           buddy/buddy-hashers                 {:mvn/version "1.4.0"}
+           buddy/buddy-core                    {:mvn/version "1.8.0"}
+           buddy/buddy-hashers                 {:mvn/version "1.6.0"}
            buddy/buddy-auth                    {:mvn/version "2.2.0"}
-           buddy/buddy-sign                    {:mvn/version "3.1.0"}
-           org.postgresql/postgresql           {:mvn/version "42.2.16.jre7"}
+           buddy/buddy-sign                    {:mvn/version "3.2.0"}
+           org.postgresql/postgresql           {:mvn/version "42.2.16"}
            hikari-cp/hikari-cp                 {:mvn/version "2.13.0"}
            org.clojure/java.jdbc               {:mvn/version "0.7.11"}
            honeysql/honeysql                   {:mvn/version "1.0.444"}
@@ -26,9 +26,9 @@
            migratus/migratus                   {:mvn/version "1.3.0"}
            camel-snake-kebab/camel-snake-kebab {:mvn/version "0.4.1"}
            com.fzakaria/slf4j-timbre           {:mvn/version "0.3.19"}
-           com.taoensso/timbre                 {:mvn/version "4.11.0-alpha2"}
-           com.taoensso/encore                 {:mvn/version "3.1.0"}
-           clj-http/clj-http                   {:mvn/version "3.10.0"}
+           com.taoensso/timbre                 {:mvn/version "5.0.1"}
+           com.taoensso/encore                 {:mvn/version "3.3.0"}
+           clj-http/clj-http                   {:mvn/version "3.10.3"}
            org.clojure/test.check              {:mvn/version "1.1.0"}}
  :aliases {:dev  {:extra-paths ["dev"]
                   :extra-deps  {com.stuartsierra/component.repl {:mvn/version "0.2.0"}}}

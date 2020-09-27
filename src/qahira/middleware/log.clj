@@ -8,11 +8,10 @@
   (let [data (if (nil? throwable) message throwable)]
     (orc.edge.logger/log logger level data)))
 
-(defn log-request-middleware
-  [component]
+(def log-request-middleware
   {:name    ::log-request
-   :compile (fn [context _]
-              (when-let [logger (or (:logger component) (:logger context))]
+   :compile (fn [{:keys [logger]} _]
+              (when (some? logger)
                 (fn [handler]
                   (let [log-fn #(log-data logger %)
                         opts   {:log-fn log-fn}]

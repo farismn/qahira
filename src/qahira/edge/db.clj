@@ -12,7 +12,8 @@
    [honeysql.helpers :as sql.help]
    [honeysql-postgres.helpers :as psql.help]
    [orchid.components.hikari-cp]
-   [taoensso.encore :as e :refer [catching]]))
+   [taoensso.encore :as e :refer [catching]]
+   [malli.util :as ml.u]))
 
 (defprotocol UserDb
   (-create-user! [user-db new-user])
@@ -33,6 +34,17 @@
   [:map
    [:new-password Password]
    [:old-password string?]])
+
+(def Address
+  [:map
+   [:id string?]
+   [:tags [:set keyword?]]
+   [:address
+    [:map
+     [:street string?]
+     [:city string?]
+     [:zip int?]
+     [:lonlat [:tuple double? double?]]]]])
 
 (def PasswordResetee
   [:map

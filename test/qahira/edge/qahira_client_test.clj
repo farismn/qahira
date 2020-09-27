@@ -18,10 +18,10 @@
 (defn- fixed-password-updatee-generator
   [password]
   (ml.gen/generator
-    (ml.u/update qhr.edge.db/PasswordUpdatee
-                 :old-password
-                 ml.u/update-properties
-                 assoc :gen/gen (t.gen/return password))))
+    (ml.u/update-in qhr.edge.db/PasswordUpdatee
+                    [:old-password]
+                    ml.u/update-properties
+                    assoc :gen/gen (t.gen/return password))))
 
 (defn- request-condition
   []

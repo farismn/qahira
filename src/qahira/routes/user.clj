@@ -1,9 +1,9 @@
 (ns qahira.routes.user
   (:require
-   [orchid.components.reitit-ring :as orc.c.reitring]
    [qahira.edge.db :as qhr.edge.db]
    [qahira.edge.token-encoder :as qhr.edge.tokenenc]
    [qahira.handlers.user :as qhr.handlers.user]
+   [qahira.middleware.auth :as qhr.mdw.auth]
    [ring.util.http-status :as http.sta]))
 
 (def ^:private WrappedAuthToken
@@ -23,65 +23,44 @@
   [:map
    [:new-password qhr.edge.db/Password]])
 
-(defn anon-routes
-  [ctx]
-  ["/api/user"
-   {:name ::anon
-    :post {:responses  {http.sta/ok {:body [:map [:token WrappedAuthToken]]}}
-           :parameters {:body [:map [:user Registree]]}
-           :handler    (qhr.handlers.user/register-handler ctx)}}])
-
-(defn target-routes
-  [ctx]
-  (letfn [(extract-middlewares [middlewares]
-            (orc.c.reitring/extract-middlewares ctx middlewares))]
-    ["/api/user/:username"
-     {:name       ::target
-      :parameters {:path [:map [:username qhr.edge.db/Username]]}
-      :post       {:responses  {http.sta/ok {:body [:map [:token WrappedAuthToken]]}}
-                   :middleware (extract-middlewares
-                                 [:basic-authentication-middleware
-                                  :authenticated-middleware
-                                  :permission-path-username-middleware])
-                   :handler    (qhr.handlers.user/login-handler ctx)}
-      :put        {:responses  {http.sta/ok {:body [:map [:token WrappedAuthToken]]}}
-                   :parameters {:body [:map [:user PasswordUpdatee]]}
-                   :middleware (extract-middlewares
-                                 [[:qahira-token-authentication-middleware :auth]
-                                  :authenticated-middleware
-                                  :permission-path-username-middleware])
-                   :handler    (qhr.handlers.user/update-password-handler ctx)}
-      :delete     {:middleware (extract-middlewares
-                                 [[:qahira-token-authentication-middleware :auth]
-                                  :authenticated-middleware
-                                  :permission-path-username-middleware])
-                   :handler    (qhr.handlers.user/delete-handler ctx)}}]))
-
-(defn restore-routes
-  [ctx]
-  (letfn [(extract-middlewares [middlewares]
-            (orc.c.reitring/extract-middlewares ctx middlewares))]
-    ["/api/user/:username/restore"
-     {:name       ::restore
-      :parameters {:path [:map [:username qhr.edge.db/Username]]}
-      :post       {:responses  {http.sta/ok {:body [:map [:token WrappedAuthToken]]}}
-                   :middleware (extract-middlewares
-                                 [[:qahira-token-authentication-middleware :restore]
-                                  :authenticated-middleware
-                                  :permission-path-username-middleware])
-                   :handler    (qhr.handlers.user/restore-handler ctx)}}]))
-
-(defn reset-routes
-  [ctx]
-  (letfn [(extract-middlewares [middlewares]
-            (orc.c.reitring/extract-middlewares ctx middlewares))]
-    ["/api/user/:username/reset"
-     {:name       ::reset
-      :parameters {:path [:map [:username qhr.edge.db/Username]]}
-      :put        {:responses  {http.sta/ok {:body [:map [:token WrappedAuthToken]]}}
-                   :parameters {:body [:map [:user PasswordResetee]]}
-                   :middleware (extract-middlewares
-                                 [[:qahira-token-authentication-middleware :reset]
-                                  :authenticated-middleware
-                                  :permission-path-username-middleware])
-                   :handler    (qhr.handlers.user/reset-password-handler ctx)}}]))
+(def routes
+  [["/api/user"
+    {:name ::anon
+     :post {:responses  {http.sta/ok {:body [:map [:token WrappedAuthToken]]}}
+            :parameters {:body [:map [:user Registree]]}
+            :handler    qhr.handlers.user/register-handler}}]
+   ["/api/user/:username"
+    {:name       ::target
+     :parameters {:path [:map [:username qhr.edge.db/Username]]}
+     :post       {:responses  {http.sta/ok {:body [:map [:token WrappedAuthToken]]}}
+                  :middleware [qhr.mdw.auth/basic-authentication-middleware
+                               qhr.mdw.auth/authenticated-middleware
+                               qhr.mdw.auth/permission-path-username-middleware]
+                  :handler    qhr.handlers.user/login-handler}
+     :put        {:responses  {http.sta/ok {:body [:map [:token WrappedAuthToken]]}}
+                  :parameters {:body [:map [:user PasswordUpdatee]]}
+                  :middleware [[qhr.mdw.auth/qahira-token-authentication-middleware :auth]
+                               qhr.mdw.auth/authenticated-middleware
+                               qhr.mdw.auth/permission-path-username-middleware]
+                  :handler    qhr.handlers.user/update-password-handler}
+     :delete     {:middleware [[qhr.mdw.auth/qahira-token-authentication-middleware :auth]
+                               qhr.mdw.auth/authenticated-middleware
+                               qhr.mdw.auth/permission-path-username-middleware]
+                  :handler    qhr.handlers.user/delete-handler}}]
+   ["/api/user/:username/restore"
+    {:name       ::restore
+     :parameters {:path [:map [:username qhr.edge.db/Username]]}
+     :post       {:responses  {http.sta/ok {:body [:map [:token WrappedAuthToken]]}}
+                  :middleware [[qhr.mdw.auth/qahira-token-authentication-middleware :restore]
+                               qhr.mdw.auth/authenticated-middleware
+                               qhr.mdw.auth/permission-path-username-middleware]
+                  :handler    qhr.handlers.user/restore-handler}}]
+   ["/api/user/:username/reset"
+    {:name       ::reset
+     :parameters {:path [:map [:username qhr.edge.db/Username]]}
+     :put        {:responses  {http.sta/ok {:body [:map [:token WrappedAuthToken]]}}
+                  :parameters {:body [:map [:user PasswordResetee]]}
+                  :middleware [[qhr.mdw.auth/qahira-token-authentication-middleware :reset]
+                               qhr.mdw.auth/authenticated-middleware
+                               qhr.mdw.auth/permission-path-username-middleware]
+                  :handler    qhr.handlers.user/reset-password-handler}}]])

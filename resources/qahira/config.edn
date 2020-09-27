@@ -22,8 +22,9 @@
  :qahira/logger             {:set-root-config? #profile {:default true}
                              :level            #profile {:dev  :debug
                                                          :test :debug}}
- :qahira/logger-println     {:enabled? #profile {:default true
-                                                 :test    false}}
+ :qahira/logger-appenders   {:qahira/println {:timbre.appenders/kind :println
+                                              :enabled?              #profile {:default true
+                                                                               :test    false}}}
  :qahira/qahira-client      {:host-uri     #join ["http://localhost:"
                                                   #ref [:qahira/http-server :port]]
                              :content-type #profile {:default :json}}}

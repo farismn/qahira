@@ -10,7 +10,6 @@
    [orchid.components.migratus :as orc.c.migratus]
    [orchid.components.reitit-ring :as orc.c.reitring]
    [orchid.components.timbre :as orc.c.timbre]
-   [qahira.middleware.auth :as qhr.mdw.auth]
    [qahira.middleware.cors :as qhr.mdw.cors]
    [qahira.middleware.exception :as qhr.mdw.ex]
    [qahira.middleware.log :as qhr.mdw.log]
@@ -20,147 +19,129 @@
    [reitit.coercion.malli :as reit.coerce.ml]
    [reitit.ring.coercion :as reit.ring.coerce]
    [reitit.ring.middleware.muuntaja :as reit.ring.mdw.mtj]
-   [reitit.ring.middleware.parameters :as reit.ring.mdw.params]))
+   [reitit.ring.middleware.parameters :as reit.ring.mdw.params]
+   [taoensso.encore :as e]
+   [taoensso.timbre :as timbre]))
 
-(defn- as-fn
-  [v]
-  (if (fn? v) v (constantly v)))
+(def ^:private services-kws
+  [:database
+   :api-token-encoder
+   :auth-token-encoder
+   :logger])
+
+(def ^:private app-routes
+  [qhr.routes.meta/routes
+   qhr.routes.token/routes
+   qhr.routes.user/routes])
+
+(defmulti make-timbre-appenders :timbre.appenders/kind)
+
+(defmethod make-timbre-appenders :default
+  [_]
+  {})
+
+(defmethod make-timbre-appenders :println
+  [config]
+  (e/merge (timbre/println-appender config)
+           (select-keys config [:min-level :enabled?])))
 
 (defn- make-http-listener-system
-  [config]
-  (letfn [(router-options [component]
-            {:data {:muuntaja   mtj/instance
+  [{:qahira/keys [http-server ring-options]}]
+  (letfn [(router-options [{:keys [config] :as component}]
+            {:data {:services   (select-keys component services-kws)
+                    :config     config
+                    :muuntaja   mtj/instance
                     :coercion   reit.coerce.ml/coercion
-                    :middleware (orc.c.reitring/extract-middlewares
-                                  component
-                                  [:parameters-middleware
-                                   :format-middleware
-                                   :exception-middleware
-                                   :log-request-middleware
-                                   :cors-middleware
-                                   :coerce-exceptions-middleware
-                                   :coerce-request-middleware
-                                   :coerce-response-middleware])}})]
+                    :middleware [reit.ring.mdw.params/parameters-middleware
+                                 reit.ring.mdw.mtj/format-middleware
+                                 qhr.mdw.ex/exception-middleware
+                                 qhr.mdw.log/log-request-middleware
+                                 qhr.mdw.cors/cors-middleware
+                                 reit.ring.coerce/coerce-exceptions-middleware
+                                 reit.ring.coerce/coerce-request-middleware
+                                 reit.ring.coerce/coerce-response-middleware]}})]
     (-> (c/system-map
-          :http-server  (orc.c.httpk/make-http-server (:qahira/http-server config))
-          :ring-handler (orc.c.reitring/make-ring-handler)
-          :ring-router  (orc.c.reitring/make-ring-router)
-          :ring-options (orc.c.reitring/make-ring-options router-options))
+          :http-server
+          (orc.c.httpk/make-http-server http-server)
+
+          :ring-handler
+          (orc.c.reitring/make-ring-handler)
+
+          :ring-router
+          (orc.c.reitring/make-ring-router)
+
+          :ring-options
+          (orc.c.reitring/make-ring-options router-options ring-options)
+
+          :ring-routes
+          (orc.c.reitring/make-ring-routes (constantly app-routes)))
         (c/system-using
           {:http-server  {:handler :ring-handler}
            :ring-handler {:router :ring-router}
-           :ring-router  {:options :ring-options}}))))
-
-(defn- make-ring-middleware-system
-  [_config]
-  (letfn [(make-ring-middleware
-            ([middleware config]
-             (-> (as-fn middleware)
-                 (orc.c.reitring/make-ring-middleware)
-                 (assoc :config config)))
-            ([middleware]
-             (make-ring-middleware middleware {})))]
-    (c/system-map
-      :parameters-middleware                  (make-ring-middleware reit.ring.mdw.params/parameters-middleware)
-      :format-middleware                      (make-ring-middleware reit.ring.mdw.mtj/format-middleware)
-      :exception-middleware                   (make-ring-middleware qhr.mdw.ex/exception-middleware)
-      :log-request-middleware                 (make-ring-middleware qhr.mdw.log/log-request-middleware)
-      :cors-middleware                        (make-ring-middleware qhr.mdw.cors/cors-middleware)
-      :coerce-exceptions-middleware           (make-ring-middleware reit.ring.coerce/coerce-exceptions-middleware)
-      :coerce-request-middleware              (make-ring-middleware reit.ring.coerce/coerce-request-middleware)
-      :coerce-response-middleware             (make-ring-middleware reit.ring.coerce/coerce-response-middleware)
-      :authenticated-middleware               (make-ring-middleware qhr.mdw.auth/authenticated-middleware)
-      :permission-path-username-middleware    (make-ring-middleware qhr.mdw.auth/permission-path-username-middleware)
-      :basic-authentication-middleware        (make-ring-middleware qhr.mdw.auth/basic-authentication-middleware)
-      :qahira-token-authentication-middleware (make-ring-middleware qhr.mdw.auth/qahira-token-authentication-middleware))))
-
-(defn- make-ring-routes-system
-  [_config]
-  (c/system-map
-    :meta-anon-routes    (orc.c.reitring/make-ring-routes qhr.routes.meta/anon-routes)
-    :token-target-routes (orc.c.reitring/make-ring-routes qhr.routes.token/target-routes)
-    :user-anon-routes    (orc.c.reitring/make-ring-routes qhr.routes.user/anon-routes)
-    :user-target-routes  (orc.c.reitring/make-ring-routes qhr.routes.user/target-routes)
-    :user-restore-routes (orc.c.reitring/make-ring-routes qhr.routes.user/restore-routes)
-    :user-reset-routes   (orc.c.reitring/make-ring-routes qhr.routes.user/reset-routes)))
+           :ring-router  {:options :ring-options
+                          :routes  :ring-routes}}))))
 
 (defn- make-database-system
-  [config]
+  [{:qahira/keys [database database-migration]}]
   (-> (c/system-map
-        :database-implementation (orc.c.hikari/make-hikari-cp-impl (:qahira/database config))
-        :database                (orc.c.hikari/make-hikari-cp)
-        :database-migration      (orc.c.migratus/make-migratus-migrate (:qahira/database-migration config)))
+        :database-implementation
+        (orc.c.hikari/make-hikari-cp-impl database)
+
+        :database
+        (orc.c.hikari/make-hikari-cp)
+
+        :database-migration
+        (orc.c.migratus/make-migratus-migrate database-migration))
       (c/system-using
         {:database           {:impl :database-implementation}
          :database-migration {:db :database}})))
 
 (defn- make-token-encoder-system
-  [config]
+  [{:qahira/keys [auth-token-encoder api-token-encoder]}]
   (c/system-map
-    :auth-token-encoder (orc.c.jwtenc/make-jwt-encoder (:qahira/auth-token-encoder config))
-    :api-token-encoder  (orc.c.jwtenc/make-jwt-encoder (:qahira/api-token-encoder config))))
+    :auth-token-encoder
+    (orc.c.jwtenc/make-jwt-encoder auth-token-encoder)
+
+    :api-token-encoder
+    (orc.c.jwtenc/make-jwt-encoder api-token-encoder)))
 
 (defn- make-logger-system
-  [config]
-  (-> (c/system-map
-        :logger         (orc.c.timbre/make-timbre-logger (:qahira/logger config))
-        :logger-println (orc.c.timbre/make-timbre-println-logger-appenders (:qahira/logger-println config)))
-      (c/system-using
-        {:logger [:logger-println]})))
+  [{:qahira/keys [logger logger-appenders]}]
+  (letfn [(appenders-settings [{:keys [config]}]
+            (->> config
+                 (e/map-vals make-timbre-appenders)
+                 (e/remove-vals empty?)))]
+    (-> (c/system-map
+          :logger
+          (orc.c.timbre/make-timbre-logger logger)
+
+          :logger-appenders
+          (orc.c.timbre/make-timbre-appenders
+            appenders-settings
+            logger-appenders))
+        (c/system-using
+          {:logger {:appenders :logger-appenders}}))))
 
 (defn- make-qahira-client-system
-  [config]
+  [{:qahira/keys [qahira-client]}]
   (c/system-map
-    :qahira-client (orc.c.httpclt/make-http-client (:qahira/qahira-client config))))
+    :qahira-client
+    (orc.c.httpclt/make-http-client qahira-client)))
 
 (defn- make-app-base-system
   [config]
   (-> (merge (make-http-listener-system config)
-             (make-ring-middleware-system config)
-             (make-ring-routes-system config)
              (make-database-system config)
              (make-token-encoder-system config)
              (make-logger-system config))
       (c/system-using
-        {:ring-router                            [:meta-anon-routes
-                                                  :token-target-routes
-                                                  :user-anon-routes
-                                                  :user-target-routes
-                                                  :user-restore-routes
-                                                  :user-reset-routes]
-         :ring-options                           [:parameters-middleware
-                                                  :format-middleware
-                                                  :exception-middleware
-                                                  :log-request-middleware
-                                                  :cors-middleware
-                                                  :coerce-exceptions-middleware
-                                                  :coerce-request-middleware
-                                                  :coerce-response-middleware]
-         :log-request-middleware                 [:logger]
-         :basic-authentication-middleware        [:database]
-         :qahira-token-authentication-middleware [:api-token-encoder
-                                                  :auth-token-encoder]
-         :token-target-routes                    [:auth-token-encoder
-                                                  :qahira-token-authentication-middleware
-                                                  :authenticated-middleware
-                                                  :permission-path-username-middleware]
-         :user-anon-routes                       [:database :auth-token-encoder]
-         :user-target-routes                     [:database
-                                                  :auth-token-encoder
-                                                  :basic-authentication-middleware
-                                                  :qahira-token-authentication-middleware
-                                                  :authenticated-middleware
-                                                  :permission-path-username-middleware]
-         :user-restore-routes                    [:database
-                                                  :auth-token-encoder
-                                                  :qahira-token-authentication-middleware
-                                                  :authenticated-middleware
-                                                  :permission-path-username-middleware]
-         :user-reset-routes                      [:database
-                                                  :auth-token-encoder
-                                                  :qahira-token-authentication-middleware
-                                                  :authenticated-middleware
-                                                  :permission-path-username-middleware]})))
+        {:database-implementation [:logger]
+         :database                [:logger]
+         :database-migration      [:logger]
+         :http-server             [:logger]
+         :auth-token-encoder      [:logger]
+         :api-token-encoder       [:logger]
+         :ring-options            services-kws})))
 
 (defn- make-app-dev-system
   [config]
@@ -172,16 +153,27 @@
                          :auth-token-encoder
                          :logger]})))
 
+(defn- make-db-dev-system
+  [config]
+  (-> (merge (make-database-system config)
+             (make-logger-system config))
+      (c/system-using
+        {:database-implementation [:logger]
+         :database                [:logger]
+         :database-migration      [:logger]})))
+
 (def ^:private systems-map
   {:app/prod make-app-base-system
    :app/dev  make-app-dev-system
    :app/test make-app-dev-system
-   :db/test  make-database-system})
+   :db/dev   make-db-dev-system
+   :db/test  make-db-dev-system})
 
 (defn make-system
   [source system-kind]
   (let [system-fn (or (get systems-map system-kind)
-                      (throw (ex-info "unknown system kind" {:system-kind system-kind})))
+                      (throw (ex-info "unknown system kind"
+                                      {:system-kind system-kind})))
         profile   (-> system-kind name keyword)
         config    (if (map? source)
                     source
