@@ -7,7 +7,7 @@
    [malli.util :as ml.u]
    [orchid.test.fixtures :as orc.t.fxt]
    [qahira.edge.db :as qhr.edge.db]
-   [qahira.edge.qahira-client :as qhr.edge.qhrc]
+   [qahira.edge.qahira-client :as qhr.edge.qhrclt]
    [qahira.test.fixtures :as qhr.t.fxt]
    [qahira.test.generator :as qhr.t.gen]
    [ring.util.http-predicates :as http.pred]))
@@ -25,18 +25,18 @@
 
 (defn- request-condition
   []
-  (qhr.edge.qhrc/request-condition
+  (qhr.edge.qhrclt/request-condition
     (qhr.t.fxt/get-component! :qahira-client)))
 
 (defn- register-user
   [request]
-  (qhr.edge.qhrc/register-user
+  (qhr.edge.qhrclt/register-user
     (qhr.t.fxt/get-component! :qahira-client)
     request))
 
 (defn- request-token
   [kind username request]
-  (qhr.edge.qhrc/request-token
+  (qhr.edge.qhrclt/request-token
     (qhr.t.fxt/get-component! :qahira-client)
     kind
     username
@@ -44,35 +44,35 @@
 
 (defn- login-user
   [username request]
-  (qhr.edge.qhrc/login-user
+  (qhr.edge.qhrclt/login-user
     (qhr.t.fxt/get-component! :qahira-client)
     username
     request))
 
 (defn- delete-user
   [username request]
-  (qhr.edge.qhrc/delete-user
+  (qhr.edge.qhrclt/delete-user
     (qhr.t.fxt/get-component! :qahira-client)
     username
     request))
 
 (defn- update-user-password
   [username request]
-  (qhr.edge.qhrc/update-user-password
+  (qhr.edge.qhrclt/update-user-password
     (qhr.t.fxt/get-component! :qahira-client)
     username
     request))
 
 (defn- restore-user
   [username request]
-  (qhr.edge.qhrc/restore-user
+  (qhr.edge.qhrclt/restore-user
     (qhr.t.fxt/get-component! :qahira-client)
     username
     request))
 
 (defn- reset-user-password
   [username request]
-  (qhr.edge.qhrc/reset-user-password
+  (qhr.edge.qhrclt/reset-user-password
     (qhr.t.fxt/get-component! :qahira-client)
     username
     request))

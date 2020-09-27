@@ -2,7 +2,7 @@
   (:require
    [clojure.java.io :as io]
    [com.stuartsierra.component.repl :as c.repl]
-   [qahira.edge.qahira-client :as qhr.edge.qhrc]
+   [qahira.edge.qahira-client :as qhr.edge.qhrclt]
    [qahira.systems :as qhr.sys]))
 
 (defn make-system
@@ -24,7 +24,7 @@
 
   (c.repl/stop)
 
-  (qhr.edge.qhrc/request-condition
+  (qhr.edge.qhrclt/request-condition
     (get-component! c.repl/system :qahira-client))
 
   )
